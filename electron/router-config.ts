@@ -24,14 +24,24 @@ export default {
     selectPath: 'open:selectPath',
     dir: 'open:dir',
   },
+  // Add these for video tasks
+  addVideoTask: 'addVideoTask',         // Changed value for dot notation access in app.svele
+  startVideoTask: 'startVideoTask',     // Changed value for dot notation access
+  drainVideoQueue: 'drainVideoQueue',   // Changed value for consistency
+  // onVideoProgress: 'on:video-progress', // Listener key for renderer - moved into 'on' object below
+
   on: {
     createMask: 'on:createMask',
     taskStart: 'on:taskStart',
     faildTask: 'on:faildTask',
-    progress: 'on:progress',
+    progress: 'on:progress', // Existing, for images
     composite: 'on:composite',
     assetsUpdate: 'on:assetsUpdate',
-    genTextImg: 'on:genTextImg',
-    genMainImgShadow: 'on:genMainImgShadow',
+    genTextImg: 'on:genTextImg', // Already exists
+    genMainImgShadow: 'on:genMainImgShadow', // Already exists
+    onVideoProgress: 'on:video-progress', // Added here
+    // Potentially add more if needed, e.g., for video errors or completion events sent to renderer
+    // onVideoError: 'on:video-error',
+    // onVideoComplete: 'on:video-complete',
   },
 };

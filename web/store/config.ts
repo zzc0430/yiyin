@@ -2,7 +2,31 @@
 import { Message } from '@ggchivalrous/db-ui';
 import { writable } from 'svelte/store';
 
-import type { IConfig } from '../main/interface';
+import type { IConfig } from '../main/interface'; // This IConfig will need videoWatermark
+
+// Define interfaces for video watermark options
+export interface VideoWatermarkTextOptions {
+  text: string;
+  fontPath: string; // Path to the font file
+  fontSize: number;
+  fontColor: string;
+  x: number; // Position x
+  y: number; // Position y
+}
+
+export interface VideoWatermarkImageOptions {
+  imagePath: string; // Path to the watermark image
+  x: number; // Position x
+  y: number; // Position y
+  scale?: number;
+}
+
+export interface VideoWatermarkConfig {
+  type: 'text' | 'image' | 'none'; // 'none' or undefined for no watermark
+  textOptions?: VideoWatermarkTextOptions;
+  imageOptions?: VideoWatermarkImageOptions;
+}
+
 
 let initConfig = false;
 let loadConfig = false;
@@ -24,6 +48,23 @@ export const config = writable<IConfig>({
       h: 0,
     },
   },
+  videoWatermark: { // Default video watermark settings
+    type: 'none', 
+    textOptions: {
+      text: 'Sample Watermark',
+      fontPath: '', // User will need to select this
+      fontSize: 24,
+      fontColor: '#FFFFFF',
+      x: 10,
+      y: 10,
+    },
+    imageOptions: {
+      imagePath: '', // User will need to select this
+      x: 10,
+      y: 10,
+      scale: 1,
+    }
+  },
   fontMap: {},
   fontDir: '',
   tempFields: [],
@@ -42,6 +83,8 @@ function onConfigUpdate(v: IConfig, newConf: any) {
   v.customTempFields = newConf.customTempFields;
   v.temps = newConf.temps;
   v.staticDir = newConf.staticDir;
+  // Add this line
+  v.videoWatermark = newConf.videoWatermark || v.videoWatermark; // Ensure it handles cases where it might be missing in older configs
   return v;
 }
 
