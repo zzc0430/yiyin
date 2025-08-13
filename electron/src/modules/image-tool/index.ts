@@ -46,6 +46,8 @@ export class ImageTool extends Event {
   private blur = 200;
 
   private exif: Exif;
+  
+  private isTiff: boolean;
 
   private _progress = 0;
 
@@ -69,6 +71,10 @@ export class ImageTool extends Event {
     this.name = name;
     this.outputOpt = opt.outputOption;
     this.id = md5(`${md5(path)}${Math.random()}${Date.now()}`);
+    
+    // Check if the input file is TIFF
+    const lowerName = name.toLowerCase();
+    this.isTiff = lowerName.endsWith('.tif') || lowerName.endsWith('.tiff');
 
     const baseFilePath = join(opt.cachePath, this.id);
     this.outputFileNames = {
@@ -278,22 +284,107 @@ export class ImageTool extends Event {
       composite.push(...textCompositeList);
     }
 
-    await sharp({
-      create: {
-        channels: 3,
-        width: this.material.bg.w,
-        height: this.material.bg.h,
-        background: {
-          r: 255,
-          g: 255,
-          b: 255,
+    // Create the base sharp instance with proper bit depth preservation
+    const is16bit = this.meta.depth === 'ushort' || this.meta.depth === 'short';
+    
+    console.log('=== Debug Info ===');
+    console.log('File name:', this.name);
+    console.log('Is TIFF:', this.isTiff);
+    console.log('Is 16-bit:', is16bit);
+    console.log('Metadata depth:', this.meta.depth);
+    console.log('Metadata space:', this.meta.space);
+    console.log('Metadata channels:', this.meta.channels);
+    
+    let sharpInstance: sharp.Sharp;
+    
+    if (this.isTiff && is16bit) {
+      console.log('=== 16-bit TIFF detected, using special processing ===');
+      console.log('Original metadata:', this.meta);
+      
+      // For 16-bit TIFF, use the original image as base and extend the canvas
+      // This preserves the original 16-bit format better than creating a new image
+      const topExtend = Math.round((this.material.bg.h - this.sizeInfo.h) / 2);
+      const bottomExtend = this.material.bg.h - this.sizeInfo.h - topExtend;
+      const leftExtend = Math.round((this.material.bg.w - this.sizeInfo.w) / 2);
+      const rightExtend = this.material.bg.w - this.sizeInfo.w - leftExtend;
+      
+      console.log('Extension values:', { topExtend, bottomExtend, leftExtend, rightExtend });
+      
+      // Start with original image and extend canvas
+      sharpInstance = sharp(this.path)
+        .rotate()
+        .toColourspace('rgb16') // Explicitly maintain 16-bit color space
+        .withMetadata({ density: this.meta.density })
+        .extend({
+          top: topExtend,
+          bottom: bottomExtend,
+          left: leftExtend,
+          right: rightExtend,
+          background: { r: 65535, g: 65535, b: 65535 } // 16-bit white
+        })
+        .composite(composite.filter(item => {
+          // Remove the main image from composite since it's already the base
+          return !item.input || !item.input.toString().includes('_main.jpg');
+        }));
+        
+      console.log('16-bit TIFF pipeline created with extend method');
+    } else {
+      // For 8-bit images or non-TIFF, use the original create method
+      const backgroundValue = 255;
+      
+      sharpInstance = sharp({
+        create: {
+          channels: this.isTiff ? this.meta.channels : 3,
+          width: this.material.bg.w,
+          height: this.material.bg.h,
+          background: this.isTiff && this.meta.channels === 4 ? {
+            r: backgroundValue,
+            g: backgroundValue,
+            b: backgroundValue,
+            alpha: 1,
+          } : {
+            r: backgroundValue,
+            g: backgroundValue,
+            b: backgroundValue,
+          },
         },
-      },
-    })
-      .withMetadata({ density: this.meta.density })
-      .composite(composite)
-      .toFormat('jpeg', { quality: this.outputOpt.quality || 100 })
-      .toFile(this.outputFileNames.composite);
+      })
+        .withMetadata({ density: this.meta.density })
+        .composite(composite);
+    }
+
+    // Apply format based on input type
+    if (this.isTiff) {
+      // Preserve TIFF format with original specifications
+      const tiffOptions: any = {
+        compression: 'lzw', // Use LZW compression for TIFF
+        quality: this.outputOpt.quality || 100,
+      };
+      
+      // For 16-bit images, ensure we maintain the bit depth by using uint16 format
+      if (this.meta.depth === 'ushort' || this.meta.depth === 'short') {
+        // Sharp automatically handles 16-bit when using uint16 format
+        await sharpInstance
+          .tiff(tiffOptions)
+          .toFile(this.outputFileNames.composite);
+      } else {
+        // For 8-bit and other formats
+        if (this.meta.depth === 'uchar' || this.meta.depth === 'char') {
+          tiffOptions.bitdepth = 8;
+        } else if (typeof this.meta.depth === 'number' && [1, 2, 4, 8].includes(this.meta.depth)) {
+          tiffOptions.bitdepth = this.meta.depth;
+        }
+        
+        await sharpInstance
+          .toFormat('tiff', tiffOptions)
+          .toFile(this.outputFileNames.composite);
+      }
+    } else {
+      // Default to JPEG for other formats
+      await sharpInstance
+        .toFormat('jpeg', { quality: this.outputOpt.quality || 100 })
+        .toFile(this.outputFileNames.composite);
+    }
 
     log.info('【%s】图片合成完毕，输出到文件: ', this.id, this.outputFileNames.composite);
     return true;

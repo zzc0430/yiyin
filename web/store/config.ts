@@ -12,6 +12,7 @@ export const config = writable<IConfig>({
     iot: false,
     landscape: false,
     solid_bg: false,
+    solid_color: '#ffffff',
     origin_wh_output: true,
     radius: 2.1,
     radius_show: true,
@@ -19,6 +20,10 @@ export const config = writable<IConfig>({
     shadow_show: true,
     bg_rate_show: true,
     font: '',
+    main_img_w_rate: 0.8,
+    text_margin: 20,
+    quality: 90,
+    mini_top_bottom_margin: 10,
     bg_rate: {
       w: 0,
       h: 0,

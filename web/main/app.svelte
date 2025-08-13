@@ -88,7 +88,8 @@
 
       for (let i = 0; i < files.length; i++) {
         const file = files.item(i);
-        if (!file.type.startsWith('image/')) {
+        const isTiff = file.name.toLowerCase().endsWith('.tif') || file.name.toLowerCase().endsWith('.tiff');
+        if (!file.type.startsWith('image/') && !isTiff) {
           Message.error(`${file.name} 文件非图片文件`);
           continue;
         }
@@ -165,7 +166,7 @@
     </div>
   {/await}
 
-  <input type="file" id="path" accept="image/*" bind:this={fileSelectDom} on:change={onFileChange} multiple class="hide" />
+  <input type="file" id="path" accept="image/*,.tif,.tiff" bind:this={fileSelectDom} on:change={onFileChange} multiple class="hide" />
 
   <div class="body">
     <div class="content">

@@ -11,11 +11,14 @@ export * from '@/common/utils';
 export const getFileName = (dir: string, fileName: string) => {
   const fileNameList = fs.readdirSync(dir);
   const fileNameParse = path.parse(fileName);
-  fileName = `${fileNameParse.name}.jpg`;
+  // Preserve original extension for TIFF files, otherwise use .jpg
+  const lowerExt = fileNameParse.ext.toLowerCase();
+  const outputExt = (lowerExt === '.tif' || lowerExt === '.tiff') ? fileNameParse.ext : '.jpg';
+  fileName = `${fileNameParse.name}${outputExt}`;
   const isExist = fileNameList.find((i) => i === fileName);
 
   if (!isExist) {
-    return `${fileNameParse.name}.jpg`;
+    return `${fileNameParse.name}${outputExt}`;
   }
 
   const fileNameSplitArr = fileNameParse.name.split('-');
@@ -43,7 +46,7 @@ export const getFileName = (dir: string, fileName: string) => {
     })
     .sort((a, b) => b.index - a.index);
 
-  return `${fileNameParse.name}-${parseList[0].index + 1}.jpg`;
+  return `${fileNameParse.name}-${parseList[0].index + 1}${outputExt}`;
 };
 
 export const hasNewVersion = async (): Promise<INewVersionRes> => {
